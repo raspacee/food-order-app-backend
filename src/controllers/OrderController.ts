@@ -5,7 +5,7 @@ import Order from "../models/order";
 
 const STRIPE = new Stripe(process.env.STRIPE_API_KEY as string);
 const FRONTEND_URL = process.env.FRONTEND_URL as string;
-const STRIPE_ENDPOINT_SECRET = process.env.STRIPE_ENDPOINT_SECRET as string;
+const STRIPE_ENDPOINT_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string;
 
 type CheckoutSessionRequest = {
   cartItems: {
@@ -20,6 +20,18 @@ type CheckoutSessionRequest = {
     city: string;
   };
   restaurantId: string;
+};
+
+const getMyOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await Order.find({ user: req.userId })
+      .populate("restaurant")
+      .populate("user");
+    return res.json(orders);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error getting your orders" });
+  }
 };
 
 const stripeWebhookHandler = async (req: Request, res: Response) => {
@@ -80,7 +92,7 @@ const createCheckoutSession = async (req: Request, res: Response) => {
 
     const session = await createSession(
       lineItems,
-      "TEST_ORDER_ID",
+      newOrder._id.toString(),
       restaurant.deliveryPrice,
       restaurant._id.toString()
     );
@@ -162,4 +174,5 @@ const createLineItems = (
 export default {
   createCheckoutSession,
   stripeWebhookHandler,
+  getMyOrders,
 };
